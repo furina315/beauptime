@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import { requestJson } from '@/lib/http'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -31,24 +32,22 @@ const testSmtpError = ref('')
 
 const fetchSettings = async () => {
   loading.value = true
+  errorMessage.value = ''
   try {
-    const res = await fetch('/api/v1/settings')
-    const json = await res.json()
-    if (json.success) {
-      form.value = {
-        telegramBotToken: json.data.telegramBotToken || '',
-        telegramChatId: json.data.telegramChatId || '',
-        smtpHost: json.data.smtpHost || '',
-        smtpPort: json.data.smtpPort || '',
-        smtpUser: json.data.smtpUser || '',
-        smtpPass: json.data.smtpPass || '',
-        smtpFrom: json.data.smtpFrom || '',
-        alertTemplateDown: json.data.alertTemplateDown || '',
-        alertTemplateUp: json.data.alertTemplateUp || ''
-      }
+    const data = await requestJson<any>('/api/v1/settings', 'Failed to load settings')
+    form.value = {
+      telegramBotToken: data.telegramBotToken || '',
+      telegramChatId: data.telegramChatId || '',
+      smtpHost: data.smtpHost || '',
+      smtpPort: data.smtpPort ? String(data.smtpPort) : '',
+      smtpUser: data.smtpUser || '',
+      smtpPass: data.smtpPass || '',
+      smtpFrom: data.smtpFrom || '',
+      alertTemplateDown: data.alertTemplateDown || '',
+      alertTemplateUp: data.alertTemplateUp || ''
     }
   } catch (err) {
-    errorMessage.value = 'Failed to load settings'
+    errorMessage.value = err instanceof Error ? err.message : 'Failed to load settings'
   } finally {
     loading.value = false
   }
@@ -59,30 +58,24 @@ const saveSettings = async () => {
   statusMessage.value = ''
   errorMessage.value = ''
   try {
-    const res = await fetch('/api/v1/settings', {
+    const data = await requestJson<any>('/api/v1/settings', 'Failed to save settings', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form.value)
     })
-    const json = await res.json()
-    if (json.success) {
-      statusMessage.value = 'Settings saved successfully'
-      form.value = {
-        telegramBotToken: json.data.telegramBotToken || '',
-        telegramChatId: json.data.telegramChatId || '',
-        smtpHost: json.data.smtpHost || '',
-        smtpPort: json.data.smtpPort || '',
-        smtpUser: json.data.smtpUser || '',
-        smtpPass: json.data.smtpPass || '',
-        smtpFrom: json.data.smtpFrom || '',
-        alertTemplateDown: json.data.alertTemplateDown || '',
-        alertTemplateUp: json.data.alertTemplateUp || ''
-      }
-    } else {
-      errorMessage.value = json.error?.message || 'Failed to save settings'
+    statusMessage.value = 'Settings saved successfully'
+    form.value = {
+      telegramBotToken: data.telegramBotToken || '',
+      telegramChatId: data.telegramChatId || '',
+      smtpHost: data.smtpHost || '',
+      smtpPort: data.smtpPort ? String(data.smtpPort) : '',
+      smtpUser: data.smtpUser || '',
+      smtpPass: data.smtpPass || '',
+      smtpFrom: data.smtpFrom || '',
+      alertTemplateDown: data.alertTemplateDown || '',
+      alertTemplateUp: data.alertTemplateUp || ''
     }
   } catch (err) {
-    errorMessage.value = 'Network error'
+    errorMessage.value = err instanceof Error ? err.message : 'Network error'
   } finally {
     saving.value = false
   }
@@ -122,22 +115,16 @@ const testTelegram = async () => {
   testTelegramMessage.value = ''
   testTelegramError.value = ''
   try {
-    const res = await fetch('/api/v1/settings/test-telegram', {
+    await requestJson<any>('/api/v1/settings/test-telegram', 'Failed to send test notification', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         telegramBotToken: form.value.telegramBotToken,
         telegramChatId: form.value.telegramChatId,
       })
     })
-    const json = await res.json()
-    if (json.success) {
-      testTelegramMessage.value = 'Test notification sent successfully!'
-    } else {
-      testTelegramError.value = json.error?.message || 'Failed to send test notification.'
-    }
+    testTelegramMessage.value = 'Test notification sent successfully!'
   } catch (err) {
-    testTelegramError.value = 'Network error'
+    testTelegramError.value = err instanceof Error ? err.message : 'Failed to send test notification.'
   } finally {
     testingTelegram.value = false
   }
@@ -148,9 +135,8 @@ const testSmtp = async () => {
   testSmtpMessage.value = ''
   testSmtpError.value = ''
   try {
-    const res = await fetch('/api/v1/settings/test-smtp', {
+    await requestJson<any>('/api/v1/settings/test-smtp', 'Failed to send test email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         smtpHost: form.value.smtpHost,
         smtpPort: form.value.smtpPort,
@@ -159,14 +145,9 @@ const testSmtp = async () => {
         smtpFrom: form.value.smtpFrom,
       })
     })
-    const json = await res.json()
-    if (json.success) {
-      testSmtpMessage.value = 'Test email sent successfully!'
-    } else {
-      testSmtpError.value = json.error?.message || 'Failed to send test email.'
-    }
+    testSmtpMessage.value = 'Test email sent successfully!'
   } catch (err) {
-    testSmtpError.value = 'Network error'
+    testSmtpError.value = err instanceof Error ? err.message : 'Failed to send test email.'
   } finally {
     testingSmtp.value = false
   }
@@ -261,7 +242,7 @@ onMounted(() => {
         </div>
         <div class="form-group">
           <label>SMTP Port</label>
-          <input type="number" v-model="form.smtpPort" placeholder="587" class="base-input" />
+          <input type="text" v-model="form.smtpPort" placeholder="587" class="base-input" />
         </div>
         <div class="form-group">
           <label>SMTP Username</label>
