@@ -233,10 +233,10 @@ export const cleanHtmlForTelegram = (html: string) => {
   return html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
-    .replace(/<p>/gi, '')
+    .replace(/<p[^>]*>/gi, '')
     .replace(/<\/div>/gi, '\n')
     .replace(/<div[^>]*>/gi, '')
-    .replace(/<h[1-6]>/gi, '<b>')
+    .replace(/<h[1-6][^>]*>/gi, '<b>')
     .replace(/<\/h[1-6]>/gi, '</b>\n')
     // Strip all disallowed tags
     .replace(/<(?!\/?(b|strong|i|em|u|ins|s|strike|del|span|a|code|pre)\b)[^>]+>/gi, '')
