@@ -13,8 +13,12 @@ export const optionalAuth = (): MiddlewareHandler => {
       return
     }
 
-    const resolved = await resolveSession(c.env, token)
-    c.set('currentAdminSession', resolved)
+    try {
+      const resolved = await resolveSession(c.env, token)
+      c.set('currentAdminSession', resolved)
+    } catch (err) {
+      c.set('currentAdminSession', null)
+    }
     await next()
   }
 }
