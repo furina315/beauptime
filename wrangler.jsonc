@@ -11,7 +11,7 @@
 			"database_id": "bf6ada5c-6d7c-43f5-a9cf-e7d02128e315",
 			"migrations_dir": "./worker-api/migrations"
 		}
-
+	],
 	"assets": {
 		"directory": "./dist/web-vue",
 		"binding": "ASSETS",
