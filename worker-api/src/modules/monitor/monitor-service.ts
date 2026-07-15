@@ -229,22 +229,20 @@ const renderTemplate = (template: string, vars: Record<string, string>) => {
   return result
 }
 
-export const cleanHtmlForTelegram = (html: string) => {
+export const stripHtmlForTelegram = (html: string) => {
   return html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
-    .replace(/<p[^>]*>/gi, '')
     .replace(/<\/div>/gi, '\n')
-    .replace(/<div[^>]*>/gi, '')
-    .replace(/<h[1-6][^>]*>/gi, '<b>')
-    .replace(/<\/h[1-6]>/gi, '</b>\n')
-    // Strip all disallowed tags
-    .replace(/<(?!\/?(b|strong|i|em|u|ins|s|strike|del|span|a|code|pre)\b)[^>]+>/gi, '')
-    // Strip attributes from allowed tags except 'a'
-    .replace(/<(b|strong|i|em|u|ins|s|strike|del|span|code|pre)\s+[^>]+>/gi, '<$1>')
-    // Clean 'a' tags to keep only href
-    .replace(/<a\s+[^>]*href="([^"]*)"[^>]*>/gi, '<a href="$1">')
-    .replace(/<a\s+(?![^>]*href=)[^>]+>/gi, '<a>')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    // Strip all remaining HTML tags
+    .replace(/<\/?[^>]+>/gi, '')
+    // Decode HTML entities (since it's plain text)
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
 }
 
 export const sendTelegramAlert = async (
@@ -253,8 +251,8 @@ export const sendTelegramAlert = async (
   subject: string,
   htmlContent: string,
 ) => {
-  const cleanedHtml = cleanHtmlForTelegram(htmlContent)
-  const fullText = `<b>${escapeHtml(subject)}</b>\n\n${cleanedHtml}`
+  const plainText = stripHtmlForTelegram(htmlContent)
+  const fullText = `${subject}\n\n${plainText}`
   const url = `https://api.telegram.org/bot${botToken}/sendMessage`
   const res = await fetch(url, {
     method: 'POST',
@@ -262,7 +260,6 @@ export const sendTelegramAlert = async (
     body: JSON.stringify({
       chat_id: chatId,
       text: fullText,
-      parse_mode: 'HTML',
     }),
   })
   if (!res.ok) {
