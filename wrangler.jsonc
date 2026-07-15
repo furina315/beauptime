@@ -11,15 +11,7 @@
 			"database_id": "bf6ada5c-6d7c-43f5-a9cf-e7d02128e315",
 			"migrations_dir": "./worker-api/migrations"
 		}
-	],	
-	"vars": {
-		"ALERT_TO_EMAIL": "",
-		"ALERT_FROM_EMAIL": "",
-		"SERVICE_LIMIT": "10",
-		"DEFAULT_TIMEOUT_MS": "8000",
-		"INCIDENT_FAILURE_THRESHOLD": "2",
-		"INCIDENT_RETENTION_DAYS": "730"
-	},
+
 	"assets": {
 		"directory": "./dist/web-vue",
 		"binding": "ASSETS",
