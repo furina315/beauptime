@@ -17,6 +17,8 @@ import {
   resolveIncident,
 } from '@/modules/incident/incident-repository'
 import { deleteResolvedIncidentsOlderThan } from './monitor-repository'
+import * as nodemailer from 'nodemailer'
+import { getSettings } from '../settings/settings-repository'
 
 const MONITOR_CONCURRENCY_LIMIT = 5
 const CLEANUP_BATCH_SIZE = 500
@@ -227,39 +229,74 @@ const sendAlert = async (
   },
 ) => {
   const config = getRuntimeConfig(env)
-  const recipientEmail = config.alertToEmail ?? ''
+  const settings = await getSettings(env.DB)
 
-  if (!recipientEmail) {
-    return false
+  let sent = false
+
+  if (settings.appriseUrl) {
+    try {
+      await fetch(settings.appriseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: input.subject,
+          body: input.text,
+        }),
+      })
+      sent = true
+    } catch (error) {
+      logger.error('Apprise notification failed', { message: error instanceof Error ? error.message : 'Unknown error' })
+    }
   }
 
-  const senderEmail = config.alertFromEmail ?? ''
+  if (settings.smtpHost && settings.smtpPort && settings.smtpFrom && config.alertToEmail) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: settings.smtpHost,
+        port: parseInt(settings.smtpPort),
+        secure: parseInt(settings.smtpPort) === 465,
+        auth: (settings.smtpUser && settings.smtpPass) ? {
+          user: settings.smtpUser,
+          pass: settings.smtpPass,
+        } : undefined,
+      })
 
-  if (!env.SEND_EMAIL || !senderEmail) {
-    logger.warn('Alert delivery is not configured', {
-      subject: input.subject,
-    })
-    return false
+      await transporter.sendMail({
+        from: settings.smtpFrom,
+        to: config.alertToEmail,
+        subject: input.subject,
+        text: input.text,
+        html: `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap;">${escapeHtml(input.text)}</pre>`,
+      })
+      sent = true
+    } catch (error) {
+      logger.error('SMTP notification failed', { message: error instanceof Error ? error.message : 'Unknown error' })
+    }
   }
 
-  try {
-    await env.SEND_EMAIL.send({
-      from: senderEmail,
-      to: recipientEmail,
-      subject: input.subject,
-      text: input.text,
-      html: `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap;">${escapeHtml(input.text)}</pre>`,
-    })
-
-    return true
+  // Fallback to Cloudflare SEND_EMAIL if configured
+  if (!sent && env.SEND_EMAIL && config.alertFromEmail && config.alertToEmail) {
+    try {
+      await env.SEND_EMAIL.send({
+        from: config.alertFromEmail,
+        to: config.alertToEmail,
+        subject: input.subject,
+        text: input.text,
+        html: `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap;">${escapeHtml(input.text)}</pre>`,
+      })
+      sent = true
+    } catch (error) {
+      logger.error('Cloudflare Email notification failed', {
+        message: error instanceof Error ? error.message : 'Unable to send notification.',
+      })
+    }
   }
-  catch (error) {
-    logger.error('Notification delivery failed', {
-      message: error instanceof Error ? error.message : 'Unable to send notification.',
-    })
 
-    return false
+  if (!sent) {
+    logger.warn('Alert delivery is not fully configured or failed', { subject: input.subject })
   }
+
+  return sent
 }
 
 const runWithConcurrency = async <TItem, TResult>(items: TItem[], limit: number, worker: (item: TItem) => Promise<TResult>) => {

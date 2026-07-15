@@ -10,6 +10,7 @@ import { monitorModule } from '@/modules/monitor/monitor'
 import { runScheduledCleanup, runScheduledMonitorSweep } from '@/modules/monitor/monitor-service'
 import { serviceModule } from '@/modules/service/service'
 import { statusModule } from '@/modules/status/status'
+import { settingsApi } from '@/modules/settings/settings-api'
 import { cors } from '@/middlewares/cors'
 import { csrfProtection } from '@/middlewares/csrf-protection'
 import { handleError } from '@/middlewares/error-handler'
@@ -83,6 +84,7 @@ app.route(`${API_V1_PREFIX}/monitor`, monitorModule)
 app.route(`${API_V1_PREFIX}/status`, statusModule)
 app.route(`${API_V1_PREFIX}/services`, serviceModule)
 app.route(`${API_V1_PREFIX}/incidents`, incidentModule)
+app.route(`${API_V1_PREFIX}/settings`, settingsApi)
 app.get('/dashboard', ...serveProtectedAppShell)
 app.get('/dashboard/*', ...serveProtectedAppShell)
 

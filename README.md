@@ -1,340 +1,94 @@
-# BeaUptime - Open-Source Uptime Monitoring on Cloudflare's Free Plan
+# BeaUptime - Open-Source Uptime Monitoring (Cloudflare)
+
+[中文说明](#中文说明) | [English](#english)
+
+---
+
+## <a id="english"></a> English
 
 BeaUptime is an open-source uptime monitoring system designed to run entirely on Cloudflare's free plan. It gives you scheduled checks, incident tracking, a public status page, and a private admin dashboard without paying for servers or a separate monitoring service.
 
-It is self-hosted, deployed as a single Cloudflare Worker, and uses Cloudflare Workers, D1, Cron Triggers, and optional Email Routing.
+It is self-hosted, deployed as a single Cloudflare Worker, and uses Cloudflare Workers, D1, Cron Triggers, and optional Email Routing / custom SMTP / Apprise.
 
-<p align="center">
-  <img src="./screenshot.png" alt="BeaUptime screenshot" width="1200" />
-</p>
-<p align="center">
-  <img src="./screenshot2.png" alt="BeaUptime screenshot" width="1200" />
-</p>
-<p align="center">
-  <img src="./screenshot3.png" alt="BeaUptime screenshot" width="1200" />
-</p>
+### 🌟 Features
+- **Public status page** at `/status`
+- **Password-only admin access** for a single operator
+- **Private dashboard** for services, incidents, and dynamic settings
+- **SMTP & Apprise Support**: Configure your own SMTP server or Apprise hook directly from the dashboard UI to receive downtime alerts.
+- **HTTP/TCP Checks**: Monitor both HTTP endpoints and TCP ports.
+- **Managed storage** with Cloudflare D1.
 
----
+### 🚀 Deploy to Cloudflare (via GitHub)
 
-## Cloudflare Free Plan
+You can push this repository directly to GitHub and deploy it to Cloudflare. 
 
-For small deployments, the default BeaUptime architecture fits within [Cloudflare's included limits](https://www.cloudflare.com/plans/):
+**Prerequisites on Cloudflare Dashboard:**
+1. Create a **D1 Database** in your Cloudflare dashboard (e.g., named `bea-uptime`).
+2. Note down the Database ID (UUID).
+3. Replace the `database_id` inside `wrangler.jsonc` with your real UUID, or configure the binding in the Cloudflare Dashboard.
 
-| Cloudflare Product | Free Plan Limit | How BeaUptime Uses It |
-| --- | --- | --- |
-| **Workers** | 100,000 req/day | API + static asset serving |
-| **Workers Cron Triggers** | 5 cron jobs | Scheduled monitoring every minute |
-| **D1 (SQLite)** | 5 GB storage, 5M reads/day | All check history and incident data |
-| **Email Routing** | Included on free zones | Optional downtime alert emails |
+**Direct Cloudflare Git Integration:**
+1. Go to Cloudflare Dashboard -> **Workers & Pages** -> **Create application** -> **Workers** -> **Connect to Git**.
+2. Select your pushed repository.
+3. **Build settings**:
+   - **Build command**: `bun run build` (or `npm run build` if you replace the package.json scripts)
+   - **Deploy command**: `npx wrangler deploy`
+4. **Environment Variables (Secrets)**:
+   - `AUTH_ROOT_SECRET`: Your admin password to log in to the dashboard (Required).
+   - *Note: Other variables like SMTP and Apprise are now configured directly within the Dashboard Settings UI.*
 
-> No credit card required. The whole stack can run within Cloudflare's included limits, so you avoid extra infrastructure costs and servers to manage.
-> Just a Cloudflare account and a few `wrangler` commands.
-
----
-
-## Why BeaUptime
-
-BeaUptime is for teams and solo maintainers who want a simple self-hosted monitor without running their own server stack.
-
-- ✅ **Single deployment** — app, API, and cron jobs in one Worker
-- ✅ **Public status page** plus a protected admin dashboard
-- ✅ Monitor both **HTTP endpoints** and **TCP ports**
-- ✅ **Automatic incident lifecycle** — open on failure, resolve on recovery
-- ✅ **Managed storage** with Cloudflare D1
-- ✅ **Optional email alerts** via Cloudflare Email Routing
-
----
-
-## Features
-
-- Public status page at `/status`
-- Password-only admin access for a single operator
-- Private dashboard for services, incidents, and monitoring summary
-- HTTP checks with expected status validation
-- TCP connectivity checks using Cloudflare sockets
-- Automatic incident open/resolve lifecycle
-- Optional email alerts through Cloudflare `send_email`
-- Manual actions from the dashboard: run checks now and test a single service
-- Uptime views for 1, 7, 30, 365, and 730-day windows
-- Static public pages served from Worker assets
-
----
-
-## Stack
-
-Built on top of the [BHVC: Bun Hono Vue Cloudflare Starter Kit](https://github.com/marcelomartins/bun-hono-vue-cloudflare), which provides the Bun + Hono + Vue + Cloudflare stack and deployment model used to run BeaUptime on Cloudflare infrastructure.
-
-Cloudflare-native stack:
-
-- **Cloudflare Workers** — API, frontend assets, and scheduled execution
-- **Cloudflare D1** — managed SQLite storage
-- **Cloudflare Cron Triggers** — monitoring and cleanup jobs
-- **Cloudflare Email Routing** — optional alert delivery
-- **BHVC stack** — Bun · Hono · Vue 3 · Vite + Vite SSG · TypeScript
-
-See the starter repository for more details about the underlying stack and Cloudflare-first architecture: <https://github.com/marcelomartins/bun-hono-vue-cloudflare>
-
----
-
-## How It Works
-
-The project is a small monorepo:
-
-- `worker-api/`: Hono API, cron jobs, monitoring logic, auth, and D1 access
-- `web-vue/`: public pages and the protected dashboard UI
-- `worker-shared/contracts/`: shared request/response and domain types
-
-At runtime, one Cloudflare Worker does three jobs:
-
-1. Serves the frontend assets
-2. Exposes the API under `/auth` and `/api/v1/*`
-3. Runs scheduled monitoring and cleanup jobs
-
-Current scheduled jobs:
-
-- Every minute: probes enabled services
-- Daily at `03:17`: deletes old resolved incidents
-
----
-
-## Requirements
-
-- [Bun](https://bun.sh/)
-- A Cloudflare account
-
----
-
-## Deploy To Cloudflare
-
-### 1. Install dependencies
-
+**Database Migrations**:
+After deploying for the first time, you must run the database migrations. You can do this locally using:
 ```bash
-bun install
-```
-
-### 2. Authenticate with Cloudflare
-
-Log in with Wrangler before creating remote resources or deploying:
-
-```bash
-bunx wrangler login
-```
-
-Optional: verify that Wrangler is authenticated against the correct account:
-
-```bash
-bunx wrangler whoami
-```
-
-### 3. Create the D1 database
-
-Create a database in your Cloudflare account:
-
-```bash
-bunx wrangler d1 create bea-uptime
-```
-
-According to Wrangler's help and Cloudflare's D1 docs, this command should provide the database UUID.
-
-Copy that database UUID into `wrangler.jsonc` as `d1_databases[0].database_id`.
-
-If your terminal output does not clearly show it, fetch the database details explicitly:
-
-```bash
-bunx wrangler d1 list
-```
-
-### 4. Configure variables and bindings
-
-Update `wrangler.jsonc` before deploying:
-
-- replace `d1_databases[0].database_id` with your own D1 database id
-- replace the example value in `AUTH_ROOT_SECRET`
-- replace or remove the example values in `ALERT_TO_EMAIL` and `ALERT_FROM_EMAIL`
-- keep `SEND_EMAIL` only if you want email alerts configured in Cloudflare
-
-Main runtime variables:
-
-| Name | Required | Purpose |
-| --- | --- | --- |
-| `AUTH_ROOT_SECRET` | Yes | Admin password |
-| `SERVICE_LIMIT` | No | Max number of configured services |
-| `DEFAULT_TIMEOUT_MS` | No | Default probe timeout |
-| `INCIDENT_FAILURE_THRESHOLD` | No | Consecutive failed probes needed to create an incident |
-| `INCIDENT_RETENTION_DAYS` | No | How long resolved incidents are kept |
-| `CORS_ALLOWED_ORIGINS` | No | Comma-separated browser origins allowed to call the Worker outside its own origin |
-| `ALERT_TO_EMAIL` | No | Alert recipient |
-| `ALERT_FROM_EMAIL` | No | Alert sender |
-| `SEND_EMAIL` | No | Cloudflare email binding used to send alerts |
-
-Current defaults from the codebase:
-
-- service limit: `10`
-- default timeout: `8000ms`
-- incident failure threshold: `2`
-- incident retention: `730` days
-
-### 5. Apply remote migrations
-
-```bash
-bun run d1:migrate:remote
-```
-
-### 6. Deploy
-
-```bash
-bun run deploy
-```
-
-The deploy script builds the frontend and Worker, then runs `wrangler deploy`.
-
----
-
-## Run Locally
-
-### 1. Create `.dev.vars`
-
-Copy `.dev.vars.example` to `.dev.vars` and adjust the values:
-
-```dotenv
-AUTH_ROOT_SECRET=change-this-password
-# Optional
-# CORS_ALLOWED_ORIGINS=http://localhost:5173
-# ALERT_TO_EMAIL=you@example.com
-# ALERT_FROM_EMAIL=alerts@example.com
-```
-
-Notes:
-
-- `AUTH_ROOT_SECRET` is the admin password used by the login screen
-- do not commit real secrets
-- local development still uses the Worker config in `wrangler.jsonc`
-- set `CORS_ALLOWED_ORIGINS=http://localhost:5173` when you want to allow browser requests from the Vite dev server or another frontend origin
-
-### 2. Apply local migrations
-
-```bash
-bun run d1:migrate:local
-```
-
-### 3. Optional: seed local data
-
-```bash
-bunx wrangler d1 execute DB --local --file ./worker-api/seed/dev-seed.sql --config ./wrangler.jsonc
-```
-
-### 4. Start the local app
-
-Build the frontend once, then start the Worker:
-
-```bash
-bun run build:web
-bun run dev:api
-```
-
-This is the most reliable local full-stack flow because the Worker serves the built frontend assets and the API from the same origin.
-
-There is also a standalone frontend dev server:
-
-```bash
-bun run dev:web
-```
-
-To call the Worker API from the Vite dev server or a separate frontend deployment, configure both sides:
-
-1. In `.dev.vars`, allow the frontend origin:
-
-```dotenv
-CORS_ALLOWED_ORIGINS=http://localhost:5173
-```
-
-2. In `web-vue/.env.local`, point the frontend to the Worker origin:
-
-```dotenv
-VITE_API_BASE_URL=http://localhost:8787
-```
-
-With no `VITE_API_BASE_URL`, the frontend uses same-origin requests, which is the default production setup.
-
-### 5. Configure email alerts (optional)
-
-BeaUptime only sends email notifications when all of the following are configured:
-
-- the `SEND_EMAIL` binding
-- `ALERT_TO_EMAIL`
-- `ALERT_FROM_EMAIL`
-
-Cloudflare requirements:
-
-1. Enable Email Routing on the same Cloudflare zone used by the Worker.
-2. Add and verify the recipient address in Email Routing destination addresses.
-3. Use a sender address from that same domain for `ALERT_FROM_EMAIL`.
-
-This repository already includes a `SEND_EMAIL` binding in `wrangler.jsonc`. Then set the alert addresses in your environment:
-
-```dotenv
-ALERT_TO_EMAIL=you@example.com
-ALERT_FROM_EMAIL=alerts@your-domain.com
-```
-
-Notes:
-
-- `ALERT_TO_EMAIL` must be a verified Email Routing destination address
-- `ALERT_FROM_EMAIL` must belong to the domain where Email Routing is enabled
-- if you want to restrict delivery, configure the binding with `destination_address` or `allowed_destination_addresses`
-
----
-
-## Build
-
-```bash
-bun run build
-```
-
-This generates:
-
-- `dist/web-vue/` for the frontend assets
-- `dist/worker-api/` for the Worker build output
-
----
-
-## Monitoring Model
-
-- Supported service types: `GET` and `TCP`
-- HTTP checks require an expected status code
-- TCP checks validate that the target host and port can be reached
-- A service becomes an incident after 2 consecutive failures
-- Incidents are resolved automatically on the next successful check
-- Public status only shows enabled services
-
----
-
-## Routes
-
-- `/`: public landing page
-- `/status`: public status page
-- `/dashboard`: protected admin console
-- `/health`: health endpoint
-- `/auth/*`: login/session endpoints
-- `/api/v1/*`: monitor, services, status, and incidents APIs
-
----
-
-## Project Structure
-
-```text
-.
-|-- web-vue/
-|-- worker-api/
-|-- worker-shared/contracts/
-|-- scripts/
-|-- wrangler.jsonc
+npx wrangler d1 execute DB --remote --file ./worker-api/migrations/0001_uptime_schema.sql
+npx wrangler d1 execute DB --remote --file ./worker-api/migrations/0002_settings_schema.sql
 ```
 
 ---
 
-## Contributing
+## <a id="中文说明"></a> 中文说明
 
-Issues and pull requests are welcome.
+BeaUptime 是一个开源的在线状态监控系统，专为完全在 Cloudflare 免费计划上运行而设计。它为您提供定时检查、故障事件跟踪、公共状态页面以及私人管理仪表盘，而无需租用服务器或支付单独的监控服务费用。
 
-See `CONTRIBUTING.md` for the development workflow and submission guidelines.
+它是自托管的，作为一个单一的 Cloudflare Worker 部署，并使用 Cloudflare Workers, D1 数据库, Cron 定时触发器，以及可选的 Email Routing / 自定义 SMTP / Apprise 消息推送。
+
+### 🌟 特性
+- `/status` 的**公共状态页面**
+- 仅限密码的**单用户管理员仪表盘**
+- 用于管理服务、事件和动态设置的**私有管理后台**
+- **SMTP 与 Apprise 支持**：您可以直接在仪表盘的设置界面中配置您自己的 SMTP 服务器或 Apprise Webhook，用于接收宕机报警。
+- **HTTP/TCP 检查**：支持监控 HTTP 接口和 TCP 端口。
+- 基于 Cloudflare D1 的完全托管存储。
+
+### 🚀 部署到 Cloudflare (通过 GitHub)
+
+您可以将此代码库直接推送到 GitHub，并在 Cloudflare 中一键导入部署。
+
+**在 Cloudflare 控制台的前置准备：**
+1. 在 Cloudflare 控制台中创建一个 **D1 数据库**（例如命名为 `bea-uptime`）。
+2. 记下该数据库的 ID (UUID)。
+3. 将 `wrangler.jsonc` 中的 `database_id` 替换为您真实的 UUID，或者在 Cloudflare 控制台的绑定中配置。
+
+**在 Cloudflare 直接导入部署：**
+1. 进入 Cloudflare 控制台 -> **Workers 和 Pages** -> **创建应用程序** -> **Workers** -> **连接到 Git**。
+2. 选择您推送的仓库。
+3. **构建设置**：
+   - **构建命令 (Build command)**: `bun run build` （如果您没有使用 bun，请确保已安装 npm 并可改为 npm 脚本）
+   - **部署命令 (Deploy command)**: `npx wrangler deploy`
+4. **环境变量 (Secrets)**：在 Cloudflare 项目的环境变量设置中添加：
+   - `AUTH_ROOT_SECRET`: 您用于登录后台的管理密码（必填）。
+   - *提示：诸如 SMTP 和 Apprise 通知等其他设置，现在可以直接在部署后的管理后台 UI 中动态配置。*
+
+**初始化数据库 (数据迁移)：**
+首次部署后，必须在数据库中创建表结构。您可以在本地通过终端运行以下命令进行远程迁移：
+```bash
+npx wrangler d1 execute DB --remote --file ./worker-api/migrations/0001_uptime_schema.sql
+npx wrangler d1 execute DB --remote --file ./worker-api/migrations/0002_settings_schema.sql
+```
+
+### 本地运行 / 调试
+由于本项目底层基于 Bun 和 Cloudflare 的架构，推荐使用 `bun` 或 `npm`。
+1. 安装依赖：`npm install`
+2. 本地数据库迁移：`npx wrangler d1 execute DB --local --file ./worker-api/migrations/0001_uptime_schema.sql` (需按顺序执行001和002)
+3. 复制 `.dev.vars.example` 为 `.dev.vars` 并填入 `AUTH_ROOT_SECRET`。
+4. 启动前端和 API 调试服务器：通过分别运行 `npm run dev:web` 和 `npm run dev:api`。

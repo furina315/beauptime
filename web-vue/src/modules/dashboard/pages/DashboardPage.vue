@@ -12,10 +12,11 @@ import AppMark from '@/components/brand/AppMark.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { useIncidentsStore } from '@/modules/incidents/incidents'
 import { useServicesStore } from '@/modules/services/services'
+import SettingsView from '@/modules/settings/SettingsView.vue'
 import { useAuth } from '@/modules/auth/auth'
 import { i18n } from '@/i18n'
 
-type PanelMode = 'overview' | 'service' | 'create' | 'incidents'
+type PanelMode = 'overview' | 'service' | 'create' | 'incidents' | 'settings'
 type UptimeWindow = ServiceUptimeSummary['windows'][number]
 
 type ServiceForm = {
@@ -1110,13 +1111,20 @@ const clearIncidentFilters = async () => {
 
 const applyRouteIntent = async () => {
   const routeServiceSlug = typeof route.params.slug === 'string' ? route.params.slug : ''
+  const path = route.path
 
-  if (route.name === 'dashboard-incidents') {
+  if (path === '/dashboard/incidents') {
     panelMode.value = 'incidents'
-    manualTest.value = null
     selectedServiceSlug.value = ''
     selectedUptimeSummary.value = null
     await fetchIncidentList()
+    return
+  }
+  
+  if (path === '/dashboard/settings') {
+    panelMode.value = 'settings'
+    selectedServiceSlug.value = ''
+    selectedUptimeSummary.value = null
     return
   }
 
@@ -1236,14 +1244,22 @@ const openCreate = () => {
 
 const openIncidents = () => {
   panelMode.value = 'incidents'
-  statusMessage.value = ''
+  selectedServiceSlug.value = ''
+  selectedUptimeSummary.value = null
+  timeline24h.value = null
+  manualTest.value = null
+  resetForm()
+  void router.push('/dashboard/incidents')
+}
 
-  if (route.name === 'dashboard-incidents') {
-    void fetchIncidentList()
-    return
-  }
-
-  void router.push({ name: 'dashboard-incidents' }).catch(() => {})
+const openSettings = () => {
+  panelMode.value = 'settings'
+  selectedServiceSlug.value = ''
+  selectedUptimeSummary.value = null
+  timeline24h.value = null
+  manualTest.value = null
+  resetForm()
+  void router.push('/dashboard/settings')
 }
 
 const createService = async () => {
@@ -1535,6 +1551,12 @@ onUnmounted(() => {
             <span>{{ $t('nav.incidents') }}</span>
           </button>
 
+          <button class="header-action" :class="{ 'is-active': panelMode === 'settings' }" type="button" @click="openSettings">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Settings</span>
+          </button>
+
+
           <label class="header-switch" :class="{ 'is-active': responseTimeChartsEnabled }">
             <input :checked="responseTimeChartsEnabled" type="checkbox" @change="toggleResponseTimeCharts" />
             <span class="header-switch__control" aria-hidden="true">
@@ -1797,6 +1819,9 @@ onUnmounted(() => {
                   </div>
                 </div>
               </form>
+            </template>
+            <template v-else-if="panelMode === 'settings'">
+              <SettingsView />
             </template>
 
             <template v-else-if="panelMode === 'incidents'">
