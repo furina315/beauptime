@@ -16,7 +16,8 @@ export const getSettings = async (db: D1Database): Promise<NotificationSettings>
     smtpUser: settings.smtpUser || '',
     smtpPass: settings.smtpPass || '',
     smtpFrom: settings.smtpFrom || '',
-    appriseUrl: settings.appriseUrl || '',
+    telegramBotToken: settings.telegramBotToken || '',
+    telegramChatId: settings.telegramChatId || '',
     alertTemplateDown: settings.alertTemplateDown || '',
     alertTemplateUp: settings.alertTemplateUp || '',
   }
@@ -31,7 +32,8 @@ export const updateSettings = async (db: D1Database, input: NotificationSettings
     ['smtpUser', input.smtpUser || ''],
     ['smtpPass', input.smtpPass || ''],
     ['smtpFrom', input.smtpFrom || ''],
-    ['appriseUrl', input.appriseUrl || ''],
+    ['telegramBotToken', input.telegramBotToken || ''],
+    ['telegramChatId', input.telegramChatId || ''],
     ['alertTemplateDown', input.alertTemplateDown || ''],
     ['alertTemplateUp', input.alertTemplateUp || '']
   ]

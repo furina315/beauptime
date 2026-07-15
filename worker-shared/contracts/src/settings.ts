@@ -6,7 +6,8 @@ export const NotificationSettingsSchema = z.object({
   smtpUser: z.string().optional(),
   smtpPass: z.string().optional(),
   smtpFrom: z.string().optional(),
-  appriseUrl: z.string().optional(),
+  telegramBotToken: z.string().optional(),
+  telegramChatId: z.string().optional(),
   alertTemplateDown: z.string().optional(),
   alertTemplateUp: z.string().optional(),
 })

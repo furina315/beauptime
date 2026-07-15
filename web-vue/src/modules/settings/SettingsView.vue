@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 const loading = ref(false)
@@ -8,7 +8,8 @@ const statusMessage = ref('')
 const errorMessage = ref('')
 
 const form = ref({
-  appriseUrl: '',
+  telegramBotToken: '',
+  telegramChatId: '',
   smtpHost: '',
   smtpPort: '',
   smtpUser: '',
@@ -20,6 +21,14 @@ const form = ref({
 
 const currentTheme = ref('light')
 
+// Test states
+const testingTelegram = ref(false)
+const testingSmtp = ref(false)
+const testTelegramMessage = ref('')
+const testSmtpMessage = ref('')
+const testTelegramError = ref('')
+const testSmtpError = ref('')
+
 const fetchSettings = async () => {
   loading.value = true
   try {
@@ -27,7 +36,8 @@ const fetchSettings = async () => {
     const json = await res.json()
     if (json.success) {
       form.value = {
-        appriseUrl: json.data.appriseUrl || '',
+        telegramBotToken: json.data.telegramBotToken || '',
+        telegramChatId: json.data.telegramChatId || '',
         smtpHost: json.data.smtpHost || '',
         smtpPort: json.data.smtpPort || '',
         smtpUser: json.data.smtpUser || '',
@@ -58,7 +68,8 @@ const saveSettings = async () => {
     if (json.success) {
       statusMessage.value = 'Settings saved successfully'
       form.value = {
-        appriseUrl: json.data.appriseUrl || '',
+        telegramBotToken: json.data.telegramBotToken || '',
+        telegramChatId: json.data.telegramChatId || '',
         smtpHost: json.data.smtpHost || '',
         smtpPort: json.data.smtpPort || '',
         smtpUser: json.data.smtpUser || '',
@@ -106,6 +117,61 @@ const renderPreview = (template: string, status: 'DOWN' | 'UP') => {
   return result
 }
 
+const testTelegram = async () => {
+  testingTelegram.value = true
+  testTelegramMessage.value = ''
+  testTelegramError.value = ''
+  try {
+    const res = await fetch('/api/v1/settings/test-telegram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        telegramBotToken: form.value.telegramBotToken,
+        telegramChatId: form.value.telegramChatId,
+      })
+    })
+    const json = await res.json()
+    if (json.success) {
+      testTelegramMessage.value = 'Test notification sent successfully!'
+    } else {
+      testTelegramError.value = json.error?.message || 'Failed to send test notification.'
+    }
+  } catch (err) {
+    testTelegramError.value = 'Network error'
+  } finally {
+    testingTelegram.value = false
+  }
+}
+
+const testSmtp = async () => {
+  testingSmtp.value = true
+  testSmtpMessage.value = ''
+  testSmtpError.value = ''
+  try {
+    const res = await fetch('/api/v1/settings/test-smtp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        smtpHost: form.value.smtpHost,
+        smtpPort: form.value.smtpPort,
+        smtpUser: form.value.smtpUser,
+        smtpPass: form.value.smtpPass,
+        smtpFrom: form.value.smtpFrom,
+      })
+    })
+    const json = await res.json()
+    if (json.success) {
+      testSmtpMessage.value = 'Test email sent successfully!'
+    } else {
+      testSmtpError.value = json.error?.message || 'Failed to send test email.'
+    }
+  } catch (err) {
+    testSmtpError.value = 'Network error'
+  } finally {
+    testingSmtp.value = false
+  }
+}
+
 onMounted(() => {
   fetchSettings()
   currentTheme.value = document.documentElement.dataset.theme || localStorage.getItem('bea-uptime-theme') || 'light'
@@ -139,6 +205,9 @@ onMounted(() => {
         <p class="form-help" style="margin-bottom: 16px;">
           Available variables: <code v-pre>{{service_name}}</code>, <code v-pre>{{time}}</code>, <code v-pre>{{target}}</code>, <code v-pre>{{status}}</code>, <code v-pre>{{reason}}</code> (reason is only available when DOWN).
         </p>
+        <p class="form-help telegram-note" style="margin-bottom: 16px;">
+          Note: Telegram Bot supports a limited set of HTML tags. Unsupported tags like <code>&lt;div&gt;</code> or <code>&lt;p&gt;</code> will automatically be cleaned and converted (e.g., to newlines) by the server to avoid delivery failure.
+        </p>
         
         <div class="template-split">
           <div class="template-editor">
@@ -166,11 +235,21 @@ onMounted(() => {
       </div>
 
       <div class="form-section">
-        <h2>Apprise Integration</h2>
+        <h2>Telegram Bot Integration</h2>
         <div class="form-group">
-          <label>Apprise URL</label>
-          <input type="url" v-model="form.appriseUrl" placeholder="http://apprise-server:8000/notify/apprise" class="base-input" />
-          <p class="form-help">Leave blank to disable. Used to send notifications via Apprise.</p>
+          <label>Telegram Bot Token</label>
+          <input type="text" v-model="form.telegramBotToken" placeholder="123456789:ABCdefGhIJKlmNo..." class="base-input full-width" />
+        </div>
+        <div class="form-group">
+          <label>Telegram Chat ID</label>
+          <input type="text" v-model="form.telegramChatId" placeholder="-100123456789 or 123456789" class="base-input" />
+        </div>
+        <div class="test-action-row">
+          <BaseButton type="button" variant="secondary" :disabled="testingTelegram" @click="testTelegram">
+            {{ testingTelegram ? 'Testing...' : 'Test Telegram Connection' }}
+          </BaseButton>
+          <span v-if="testTelegramMessage" class="status-success">{{ testTelegramMessage }}</span>
+          <span v-if="testTelegramError" class="status-error">{{ testTelegramError }}</span>
         </div>
       </div>
 
@@ -195,6 +274,13 @@ onMounted(() => {
         <div class="form-group">
           <label>From Email Address</label>
           <input type="email" v-model="form.smtpFrom" placeholder="alerts@example.com" class="base-input" />
+        </div>
+        <div class="test-action-row">
+          <BaseButton type="button" variant="secondary" :disabled="testingSmtp" @click="testSmtp">
+            {{ testingSmtp ? 'Testing...' : 'Test SMTP Connection' }}
+          </BaseButton>
+          <span v-if="testSmtpMessage" class="status-success">{{ testSmtpMessage }}</span>
+          <span v-if="testSmtpError" class="status-error">{{ testSmtpError }}</span>
         </div>
       </div>
 
@@ -251,6 +337,9 @@ onMounted(() => {
   background: var(--surface-muted);
   color: var(--text);
 }
+.base-input.full-width {
+  max-width: 600px;
+}
 .base-input:focus {
   outline: none;
   border-color: var(--brand);
@@ -269,6 +358,13 @@ select.base-input {
   font-size: 13px;
   color: var(--text-soft);
   margin-top: 6px;
+}
+.telegram-note {
+  background: rgba(0, 136, 204, 0.1);
+  border-left: 3px solid #0088cc;
+  padding: 8px 12px;
+  border-radius: 0 4px 4px 0;
+  color: var(--text-soft);
 }
 .template-split {
   display: flex;
@@ -296,6 +392,14 @@ select.base-input {
   background: var(--page-bg);
   overflow-y: auto;
   font-size: 14px;
+}
+.test-action-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
 }
 @media (max-width: 768px) {
   .template-editor {

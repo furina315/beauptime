@@ -229,6 +229,74 @@ const renderTemplate = (template: string, vars: Record<string, string>) => {
   return result
 }
 
+export const cleanHtmlForTelegram = (html: string) => {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<p>/gi, '')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<div[^>]*>/gi, '')
+    .replace(/<h[1-6]>/gi, '<b>')
+    .replace(/<\/h[1-6]>/gi, '</b>\n')
+    .replace(/<(?!\/?(b|strong|i|em|u|ins|s|strike|del|span|a|code|pre)\b)[^>]+>/gi, '')
+}
+
+export const sendTelegramAlert = async (
+  botToken: string,
+  chatId: string,
+  subject: string,
+  htmlContent: string,
+) => {
+  const cleanedHtml = cleanHtmlForTelegram(htmlContent)
+  const fullText = `<b>${escapeHtml(subject)}</b>\n\n${cleanedHtml}`
+  const url = `https://api.telegram.org/bot${botToken}/sendMessage`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: fullText,
+      parse_mode: 'HTML',
+    }),
+  })
+  if (!res.ok) {
+    const errorText = await res.text()
+    throw new Error(`Telegram API returned ${res.status}: ${errorText}`)
+  }
+}
+
+export const sendSmtpAlert = async (
+  smtpConfig: {
+    host: string
+    port: string
+    user: string
+    pass: string
+    from: string
+  },
+  toEmail: string,
+  subject: string,
+  text: string,
+  html: string,
+) => {
+  const transporter = nodemailer.createTransport({
+    host: smtpConfig.host,
+    port: parseInt(smtpConfig.port),
+    secure: parseInt(smtpConfig.port) === 465,
+    auth: (smtpConfig.user && smtpConfig.pass) ? {
+      user: smtpConfig.user,
+      pass: smtpConfig.pass,
+    } : undefined,
+  })
+
+  await transporter.sendMail({
+    from: smtpConfig.from,
+    to: toEmail,
+    subject: subject,
+    text: text,
+    html: html,
+  })
+}
+
 const sendAlert = async (
   env: AppBindings,
   input: {
@@ -253,42 +321,35 @@ const sendAlert = async (
 
   let sent = false
 
-  if (settings.appriseUrl) {
+  if (settings.telegramBotToken && settings.telegramChatId) {
     try {
-      await fetch(settings.appriseUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: input.subject,
-          body: finalHtml,
-          format: 'html'
-        }),
-      })
+      await sendTelegramAlert(
+        settings.telegramBotToken,
+        settings.telegramChatId,
+        input.subject,
+        finalHtml,
+      )
       sent = true
     } catch (error) {
-      logger.error('Apprise notification failed', { message: error instanceof Error ? error.message : 'Unknown error' })
+      logger.error('Telegram notification failed', { message: error instanceof Error ? error.message : 'Unknown error' })
     }
   }
 
   if (settings.smtpHost && settings.smtpPort && settings.smtpFrom && config.alertToEmail) {
     try {
-      const transporter = nodemailer.createTransport({
-        host: settings.smtpHost,
-        port: parseInt(settings.smtpPort),
-        secure: parseInt(settings.smtpPort) === 465,
-        auth: (settings.smtpUser && settings.smtpPass) ? {
-          user: settings.smtpUser,
-          pass: settings.smtpPass,
-        } : undefined,
-      })
-
-      await transporter.sendMail({
-        from: settings.smtpFrom,
-        to: config.alertToEmail,
-        subject: input.subject,
-        text: input.text,
-        html: finalHtml,
-      })
+      await sendSmtpAlert(
+        {
+          host: settings.smtpHost,
+          port: settings.smtpPort,
+          user: settings.smtpUser || '',
+          pass: settings.smtpPass || '',
+          from: settings.smtpFrom,
+        },
+        config.alertToEmail,
+        input.subject,
+        input.text,
+        finalHtml,
+      )
       sent = true
     } catch (error) {
       logger.error('SMTP notification failed', { message: error instanceof Error ? error.message : 'Unknown error' })
