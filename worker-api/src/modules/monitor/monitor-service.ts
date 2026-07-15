@@ -238,7 +238,13 @@ export const cleanHtmlForTelegram = (html: string) => {
     .replace(/<div[^>]*>/gi, '')
     .replace(/<h[1-6]>/gi, '<b>')
     .replace(/<\/h[1-6]>/gi, '</b>\n')
+    // Strip all disallowed tags
     .replace(/<(?!\/?(b|strong|i|em|u|ins|s|strike|del|span|a|code|pre)\b)[^>]+>/gi, '')
+    // Strip attributes from allowed tags except 'a'
+    .replace(/<(b|strong|i|em|u|ins|s|strike|del|span|code|pre)\s+[^>]+>/gi, '<$1>')
+    // Clean 'a' tags to keep only href
+    .replace(/<a\s+[^>]*href="([^"]*)"[^>]*>/gi, '<a href="$1">')
+    .replace(/<a\s+(?![^>]*href=)[^>]+>/gi, '<a>')
 }
 
 export const sendTelegramAlert = async (
