@@ -17,6 +17,8 @@ export const getSettings = async (db: D1Database): Promise<NotificationSettings>
     smtpPass: settings.smtpPass || '',
     smtpFrom: settings.smtpFrom || '',
     appriseUrl: settings.appriseUrl || '',
+    alertTemplateDown: settings.alertTemplateDown || '',
+    alertTemplateUp: settings.alertTemplateUp || '',
   }
 }
 
@@ -29,7 +31,9 @@ export const updateSettings = async (db: D1Database, input: NotificationSettings
     ['smtpUser', input.smtpUser || ''],
     ['smtpPass', input.smtpPass || ''],
     ['smtpFrom', input.smtpFrom || ''],
-    ['appriseUrl', input.appriseUrl || '']
+    ['appriseUrl', input.appriseUrl || ''],
+    ['alertTemplateDown', input.alertTemplateDown || ''],
+    ['alertTemplateUp', input.alertTemplateUp || '']
   ]
   
   const stmts = entries.map(([k, v]) => stmt.bind(k, v))
