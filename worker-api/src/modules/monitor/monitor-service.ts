@@ -221,37 +221,20 @@ const formatProbeTarget = (service: Pick<ServiceProbeTarget, 'target' | 'type' |
   return service.type === 'TCP' ? `${service.target}:${service.port}` : service.target
 }
 
-const renderTemplate = (template: string, vars: Record<string, string>) => {
+const renderTemplate = (template: string, vars: Record<string, string>, escape = true) => {
   let result = template
   for (const [key, value] of Object.entries(vars)) {
-    result = result.replace(new RegExp(`{{${key}}}`, 'g'), escapeHtml(value))
+    result = result.replace(new RegExp(`{{${key}}}`, 'g'), escape ? escapeHtml(value) : value)
   }
   return result
-}
-
-export const stripHtmlForTelegram = (html: string) => {
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    .replace(/<\/div>/gi, '\n')
-    .replace(/<\/h[1-6]>/gi, '\n')
-    // Strip all remaining HTML tags
-    .replace(/<\/?[^>]+>/gi, '')
-    // Decode HTML entities (since it's plain text)
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
 }
 
 export const sendTelegramAlert = async (
   botToken: string,
   chatId: string,
   subject: string,
-  htmlContent: string,
+  plainText: string,
 ) => {
-  const plainText = stripHtmlForTelegram(htmlContent)
   const fullText = `${subject}\n\n${plainText}`
   const url = `https://api.telegram.org/bot${botToken}/sendMessage`
   const res = await fetch(url, {
@@ -326,11 +309,21 @@ const sendAlert = async (
 
   if (settings.telegramBotToken && settings.telegramChatId) {
     try {
+      let tgText: string | undefined = undefined
+      if (input.templateType === 'down' && settings.tgTemplateDown && input.templateVars) {
+        tgText = renderTemplate(settings.tgTemplateDown, input.templateVars, false)
+      } else if (input.templateType === 'up' && settings.tgTemplateUp && input.templateVars) {
+        tgText = renderTemplate(settings.tgTemplateUp, input.templateVars, false)
+      }
+      if (!tgText) {
+        tgText = input.text
+      }
+
       await sendTelegramAlert(
         settings.telegramBotToken,
         settings.telegramChatId,
         input.subject,
-        finalHtml,
+        tgText,
       )
       sent = true
     } catch (error) {

@@ -25,6 +25,8 @@ export const getSettings = async (db: D1Database): Promise<NotificationSettings>
     metaTitle: settings.metaTitle || '',
     metaIcon: settings.metaIcon || '',
     footerText: settings.footerText || '',
+    tgTemplateDown: settings.tgTemplateDown || '',
+    tgTemplateUp: settings.tgTemplateUp || '',
   }
 }
 
@@ -45,7 +47,9 @@ export const updateSettings = async (db: D1Database, input: NotificationSettings
     ['siteLogo', input.siteLogo || ''],
     ['metaTitle', input.metaTitle || ''],
     ['metaIcon', input.metaIcon || ''],
-    ['footerText', input.footerText || '']
+    ['footerText', input.footerText || ''],
+    ['tgTemplateDown', input.tgTemplateDown || ''],
+    ['tgTemplateUp', input.tgTemplateUp || '']
   ]
   
   const stmts = entries.map(([k, v]) => stmt.bind(k, v))

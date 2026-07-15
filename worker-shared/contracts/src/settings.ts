@@ -15,6 +15,8 @@ export const NotificationSettingsSchema = z.object({
   metaTitle: z.string().optional(),
   metaIcon: z.string().optional(),
   footerText: z.string().optional(),
+  tgTemplateDown: z.string().optional(),
+  tgTemplateUp: z.string().optional(),
 })
 
 export type NotificationSettings = z.infer<typeof NotificationSettingsSchema>

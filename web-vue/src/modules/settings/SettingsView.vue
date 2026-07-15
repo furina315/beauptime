@@ -22,7 +22,9 @@ const form = ref({
   siteLogo: '',
   metaTitle: '',
   metaIcon: '',
-  footerText: ''
+  footerText: '',
+  tgTemplateDown: '',
+  tgTemplateUp: ''
 })
 
 const currentTheme = ref('light')
@@ -54,7 +56,9 @@ const fetchSettings = async () => {
       siteLogo: data.siteLogo || '',
       metaTitle: data.metaTitle || '',
       metaIcon: data.metaIcon || '',
-      footerText: data.footerText || ''
+      footerText: data.footerText || '',
+      tgTemplateDown: data.tgTemplateDown || '',
+      tgTemplateUp: data.tgTemplateUp || ''
     }
   } catch (err) {
     errorMessage.value = err instanceof Error ? err.message : 'Failed to load settings'
@@ -87,7 +91,9 @@ const saveSettings = async () => {
       siteLogo: data.siteLogo || '',
       metaTitle: data.metaTitle || '',
       metaIcon: data.metaIcon || '',
-      footerText: data.footerText || ''
+      footerText: data.footerText || '',
+      tgTemplateDown: data.tgTemplateDown || '',
+      tgTemplateUp: data.tgTemplateUp || ''
     }
   } catch (err) {
     errorMessage.value = err instanceof Error ? err.message : 'Network error'
@@ -125,11 +131,37 @@ const renderPreview = (template: string, status: 'DOWN' | 'UP') => {
   return result
 }
 
+const renderTextPreview = (template: string, status: 'DOWN' | 'UP') => {
+  if (!template) {
+    return '(Default text format will be used)'
+  }
+  let result = template
+  const vars: Record<string, string> = {
+    service_name: 'My Website',
+    time: new Date().toISOString(),
+    target: 'https://example.com',
+    status: status,
+    reason: status === 'DOWN' ? 'Connection timeout' : ''
+  }
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`{{${key}}}`, 'g'), value)
+  }
+  return result
+}
+
 const testTelegram = async () => {
   testingTelegram.value = true
   testTelegramMessage.value = ''
   testTelegramError.value = ''
   try {
+    // Render the test text locally to send via testing endpoint
+    let testText = ''
+    if (form.value.tgTemplateDown) {
+      testText = renderTextPreview(form.value.tgTemplateDown, 'DOWN')
+    } else {
+      testText = 'This is a test notification from your BeaUptime monitor!'
+    }
+
     await requestJson<any>('/api/v1/settings/test-telegram', 'Failed to send test notification', {
       method: 'POST',
       body: JSON.stringify({
@@ -226,18 +258,15 @@ onMounted(() => {
       </div>
 
       <div class="form-section">
-        <h2>Message Templates (HTML)</h2>
+        <h2>Email Message Templates (HTML)</h2>
         <p class="form-help" style="margin-bottom: 16px;">
           Available variables: <code v-pre>{{service_name}}</code>, <code v-pre>{{time}}</code>, <code v-pre>{{target}}</code>, <code v-pre>{{status}}</code>, <code v-pre>{{reason}}</code> (reason is only available when DOWN).
-        </p>
-        <p class="form-help telegram-note" style="margin-bottom: 16px;">
-          Note: Telegram Bot supports a limited set of HTML tags. Unsupported tags like <code>&lt;div&gt;</code> or <code>&lt;p&gt;</code> will automatically be cleaned and converted (e.g., to newlines) by the server to avoid delivery failure.
         </p>
         
         <div class="template-split">
           <div class="template-editor">
             <div class="form-group">
-              <label>Down Alert Template (HTML)</label>
+              <label>Email Down Alert Template (HTML)</label>
               <textarea v-model="form.alertTemplateDown" class="base-input html-editor" placeholder="<b>{{service_name}}</b> is DOWN..."></textarea>
             </div>
             <div class="preview-panel">
@@ -248,7 +277,7 @@ onMounted(() => {
 
           <div class="template-editor">
             <div class="form-group">
-              <label>Recovery Alert Template (HTML)</label>
+              <label>Email Recovery Alert Template (HTML)</label>
               <textarea v-model="form.alertTemplateUp" class="base-input html-editor" placeholder="<b>{{service_name}}</b> is UP..."></textarea>
             </div>
             <div class="preview-panel">
@@ -269,6 +298,36 @@ onMounted(() => {
           <label>Telegram Chat ID</label>
           <input type="text" v-model="form.telegramChatId" placeholder="-100123456789 or 123456789" class="base-input" />
         </div>
+
+        <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Telegram Message Templates (Plain Text)</h3>
+        <p class="form-help" style="margin-bottom: 16px;">
+          Available variables: <code v-pre>{{service_name}}</code>, <code v-pre>{{time}}</code>, <code v-pre>{{target}}</code>, <code v-pre>{{status}}</code>, <code v-pre>{{reason}}</code> (reason is only available when DOWN).
+        </p>
+
+        <div class="template-split">
+          <div class="template-editor">
+            <div class="form-group">
+              <label>Telegram Down Alert Template (Plain Text)</label>
+              <textarea v-model="form.tgTemplateDown" class="base-input html-editor" placeholder="🚨 {{service_name}} is OFFLINE!&#10;Reason: {{reason}}&#10;Time: {{time}}"></textarea>
+            </div>
+            <div class="preview-panel">
+              <label>Live Preview</label>
+              <div class="preview-box pre-wrap" style="white-space: pre-wrap;">{{ renderTextPreview(form.tgTemplateDown, 'DOWN') }}</div>
+            </div>
+          </div>
+
+          <div class="template-editor">
+            <div class="form-group">
+              <label>Telegram Recovery Alert Template (Plain Text)</label>
+              <textarea v-model="form.tgTemplateUp" class="base-input html-editor" placeholder="✅ {{service_name}} is ONLINE!&#10;Time: {{time}}"></textarea>
+            </div>
+            <div class="preview-panel">
+              <label>Live Preview</label>
+              <div class="preview-box pre-wrap" style="white-space: pre-wrap;">{{ renderTextPreview(form.tgTemplateUp, 'UP') }}</div>
+            </div>
+          </div>
+        </div>
+
         <div class="test-action-row">
           <BaseButton type="button" variant="secondary" :disabled="testingTelegram" @click="testTelegram">
             {{ testingTelegram ? 'Testing...' : 'Test Telegram Connection' }}
