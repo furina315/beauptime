@@ -137,7 +137,7 @@ onMounted(() => {
       <div class="form-section">
         <h2>Message Templates (HTML)</h2>
         <p class="form-help" style="margin-bottom: 16px;">
-          Available variables: <code>{{service_name}}</code>, <code>{{time}}</code>, <code>{{target}}</code>, <code>{{status}}</code>, <code>{{reason}}</code> (reason is only available when DOWN).
+          Available variables: <code v-pre>{{service_name}}</code>, <code v-pre>{{time}}</code>, <code v-pre>{{target}}</code>, <code v-pre>{{status}}</code>, <code v-pre>{{reason}}</code> (reason is only available when DOWN).
         </p>
         
         <div class="template-split">
