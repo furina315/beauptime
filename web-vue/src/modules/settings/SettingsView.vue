@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 const loading = ref(false)
@@ -13,8 +13,12 @@ const form = ref({
   smtpPort: '',
   smtpUser: '',
   smtpPass: '',
-  smtpFrom: ''
+  smtpFrom: '',
+  alertTemplateDown: '',
+  alertTemplateUp: ''
 })
+
+const currentTheme = ref('light')
 
 const fetchSettings = async () => {
   loading.value = true
@@ -22,7 +26,16 @@ const fetchSettings = async () => {
     const res = await fetch('/api/v1/settings')
     const json = await res.json()
     if (json.ok) {
-      form.value = json.data
+      form.value = {
+        appriseUrl: json.data.appriseUrl || '',
+        smtpHost: json.data.smtpHost || '',
+        smtpPort: json.data.smtpPort || '',
+        smtpUser: json.data.smtpUser || '',
+        smtpPass: json.data.smtpPass || '',
+        smtpFrom: json.data.smtpFrom || '',
+        alertTemplateDown: json.data.alertTemplateDown || '',
+        alertTemplateUp: json.data.alertTemplateUp || ''
+      }
     }
   } catch (err) {
     errorMessage.value = 'Failed to load settings'
@@ -44,7 +57,16 @@ const saveSettings = async () => {
     const json = await res.json()
     if (json.ok) {
       statusMessage.value = 'Settings saved successfully'
-      form.value = json.data
+      form.value = {
+        appriseUrl: json.data.appriseUrl || '',
+        smtpHost: json.data.smtpHost || '',
+        smtpPort: json.data.smtpPort || '',
+        smtpUser: json.data.smtpUser || '',
+        smtpPass: json.data.smtpPass || '',
+        smtpFrom: json.data.smtpFrom || '',
+        alertTemplateDown: json.data.alertTemplateDown || '',
+        alertTemplateUp: json.data.alertTemplateUp || ''
+      }
     } else {
       errorMessage.value = json.error?.message || 'Failed to save settings'
     }
@@ -55,20 +77,94 @@ const saveSettings = async () => {
   }
 }
 
+const applyTheme = (theme: string) => {
+  currentTheme.value = theme
+  document.documentElement.dataset.theme = theme
+  localStorage.setItem('bea-uptime-theme', theme)
+}
+
+const onThemeChange = (e: Event) => {
+  const target = e.target as HTMLSelectElement
+  applyTheme(target.value)
+}
+
+const renderPreview = (template: string, status: 'DOWN' | 'UP') => {
+  if (!template) {
+    return '<em>(Default text format will be used)</em>'
+  }
+  let result = template
+  const vars: Record<string, string> = {
+    service_name: 'My Website',
+    time: new Date().toISOString(),
+    target: 'https://example.com',
+    status: status,
+    reason: status === 'DOWN' ? 'Connection timeout' : ''
+  }
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`{{${key}}}`, 'g'), value.replace(/</g, '&lt;').replace(/>/g, '&gt;'))
+  }
+  return result
+}
+
 onMounted(() => {
   fetchSettings()
+  currentTheme.value = document.documentElement.dataset.theme || localStorage.getItem('bea-uptime-theme') || 'light'
 })
 </script>
 
 <template>
   <div class="settings-panel">
     <div class="panel-header">
-      <h1 class="panel-title">Notifications Settings</h1>
+      <h1 class="panel-title">Settings</h1>
     </div>
 
     <div v-if="loading" class="state-message">Loading settings...</div>
 
     <form v-else @submit.prevent="saveSettings" class="settings-form">
+      
+      <div class="form-section">
+        <h2>Appearance</h2>
+        <div class="form-group">
+          <label>Global Theme (Day/Night Mode)</label>
+          <select :value="currentTheme" @change="onThemeChange" class="base-input">
+            <option value="light">Day Mode (Light)</option>
+            <option value="dark">Night Mode (Dark)</option>
+          </select>
+          <p class="form-help">Sets the visual theme for your browser across the dashboard and status page.</p>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2>Message Templates (HTML)</h2>
+        <p class="form-help" style="margin-bottom: 16px;">
+          Available variables: <code>{{service_name}}</code>, <code>{{time}}</code>, <code>{{target}}</code>, <code>{{status}}</code>, <code>{{reason}}</code> (reason is only available when DOWN).
+        </p>
+        
+        <div class="template-split">
+          <div class="template-editor">
+            <div class="form-group">
+              <label>Down Alert Template (HTML)</label>
+              <textarea v-model="form.alertTemplateDown" class="base-input html-editor" placeholder="<b>{{service_name}}</b> is DOWN..."></textarea>
+            </div>
+            <div class="preview-panel">
+              <label>Live Preview</label>
+              <div class="preview-box" v-html="renderPreview(form.alertTemplateDown, 'DOWN')"></div>
+            </div>
+          </div>
+
+          <div class="template-editor">
+            <div class="form-group">
+              <label>Recovery Alert Template (HTML)</label>
+              <textarea v-model="form.alertTemplateUp" class="base-input html-editor" placeholder="<b>{{service_name}}</b> is UP..."></textarea>
+            </div>
+            <div class="preview-panel">
+              <label>Live Preview</label>
+              <div class="preview-box" v-html="renderPreview(form.alertTemplateUp, 'UP')"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="form-section">
         <h2>Apprise Integration</h2>
         <div class="form-group">
@@ -125,8 +221,8 @@ onMounted(() => {
   font-weight: 600;
 }
 .form-section {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 24px;
@@ -150,15 +246,61 @@ onMounted(() => {
   width: 100%;
   max-width: 400px;
   padding: 8px 12px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
-  background: var(--bg-input);
-  color: var(--text-primary);
+  background: var(--surface-muted);
+  color: var(--text);
+}
+.base-input:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+select.base-input {
+  cursor: pointer;
+}
+.html-editor {
+  max-width: 100%;
+  min-height: 120px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
 }
 .form-help {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--text-soft);
   margin-top: 6px;
+}
+.template-split {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.template-editor {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: flex-start;
+}
+.preview-panel label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: var(--text-soft);
+}
+.preview-box {
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+  padding: 16px;
+  min-height: 120px;
+  background: var(--page-bg);
+  overflow-y: auto;
+  font-size: 14px;
+}
+@media (max-width: 768px) {
+  .template-editor {
+    grid-template-columns: 1fr;
+  }
 }
 .form-actions {
   display: flex;
@@ -166,14 +308,20 @@ onMounted(() => {
   gap: 16px;
 }
 .status-success {
-  color: var(--color-success);
+  color: var(--success);
   font-size: 14px;
 }
 .status-error {
-  color: var(--color-danger);
+  color: var(--danger);
   font-size: 14px;
 }
 .state-message {
-  color: var(--text-secondary);
+  color: var(--text-soft);
+}
+code {
+  background: var(--surface-muted);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
 }
 </style>

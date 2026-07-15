@@ -221,15 +221,35 @@ const formatProbeTarget = (service: Pick<ServiceProbeTarget, 'target' | 'type' |
   return service.type === 'TCP' ? `${service.target}:${service.port}` : service.target
 }
 
+const renderTemplate = (template: string, vars: Record<string, string>) => {
+  let result = template
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`{{${key}}}`, 'g'), escapeHtml(value))
+  }
+  return result
+}
+
 const sendAlert = async (
   env: AppBindings,
   input: {
     subject: string
     text: string
+    templateType?: 'down' | 'up'
+    templateVars?: Record<string, string>
   },
 ) => {
   const config = getRuntimeConfig(env)
   const settings = await getSettings(env.DB)
+
+  let finalHtml: string | undefined = undefined
+  if (input.templateType === 'down' && settings.alertTemplateDown && input.templateVars) {
+    finalHtml = renderTemplate(settings.alertTemplateDown, input.templateVars)
+  } else if (input.templateType === 'up' && settings.alertTemplateUp && input.templateVars) {
+    finalHtml = renderTemplate(settings.alertTemplateUp, input.templateVars)
+  }
+  if (!finalHtml) {
+    finalHtml = `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap;">${escapeHtml(input.text)}</pre>`
+  }
 
   let sent = false
 
@@ -240,7 +260,8 @@ const sendAlert = async (
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: input.subject,
-          body: input.text,
+          body: finalHtml,
+          format: 'html'
         }),
       })
       sent = true
@@ -266,7 +287,7 @@ const sendAlert = async (
         to: config.alertToEmail,
         subject: input.subject,
         text: input.text,
-        html: `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap;">${escapeHtml(input.text)}</pre>`,
+        html: finalHtml,
       })
       sent = true
     } catch (error) {
@@ -282,7 +303,7 @@ const sendAlert = async (
         to: config.alertToEmail,
         subject: input.subject,
         text: input.text,
-        html: `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap;">${escapeHtml(input.text)}</pre>`,
+        html: finalHtml,
       })
       sent = true
     } catch (error) {
@@ -338,6 +359,14 @@ const applyIncidentLifecycle = async (env: AppBindings, service: ServiceProbeTar
           await sendAlert(env, {
             subject: `[BeaUptime] ${service.name} recovered`,
             text: `${service.name} recovered at ${resolvedIncident.resolvedAt}.\nTarget: ${formatProbeTarget(service)}`,
+            templateType: 'up',
+            templateVars: {
+              service_name: service.name,
+              time: resolvedIncident.resolvedAt ?? '',
+              target: formatProbeTarget(service),
+              status: 'UP',
+              reason: ''
+            }
           })
         }
       }
@@ -360,6 +389,14 @@ const applyIncidentLifecycle = async (env: AppBindings, service: ServiceProbeTar
         await sendAlert(env, {
           subject: `[BeaUptime] ${service.name} is down`,
           text: `${service.name} entered incident state at ${incident.startedAt}.\nReason: ${incident.failureMessage ?? 'Probe failed.'}.\nTarget: ${formatProbeTarget(service)}`,
+          templateType: 'down',
+          templateVars: {
+            service_name: service.name,
+            time: incident.startedAt,
+            target: formatProbeTarget(service),
+            status: 'DOWN',
+            reason: incident.failureMessage ?? 'Probe failed.'
+          }
         })
       }
     }

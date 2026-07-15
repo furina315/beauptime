@@ -3,6 +3,7 @@ import type { Context } from 'hono'
 import type { MiddlewareHandler } from 'hono'
 import type { AppEnv } from '@/env'
 import { logger } from '@/lib/logger'
+import { ensureDbInitialized } from '@/lib/db'
 import { authModule } from '@/modules/auth/auth'
 import { healthModule } from '@/modules/infra/health'
 import { incidentModule } from '@/modules/incident/incident'
@@ -69,6 +70,11 @@ const requireAppShellAuth = (): MiddlewareHandler<AppEnv> => {
 const serveProtectedAppShell = [requireAppShellAuth(), serveAppShell] as const
 
 const app = new Hono<AppEnv>()
+
+app.use('*', async (c, next) => {
+	await ensureDbInitialized(c.env.DB)
+	await next()
+})
 
 app.use('*', requestId())
 app.use('*', security())

@@ -37,12 +37,9 @@ You can push this repository directly to GitHub and deploy it to Cloudflare.
    - `AUTH_ROOT_SECRET`: Your admin password to log in to the dashboard (Required).
    - *Note: Other variables like SMTP and Apprise are now configured directly within the Dashboard Settings UI.*
 
-**Database Migrations**:
-After deploying for the first time, you must run the database migrations. You can do this locally using:
-```bash
-npx wrangler d1 execute DB --remote --file ./worker-api/migrations/0001_uptime_schema.sql
-npx wrangler d1 execute DB --remote --file ./worker-api/migrations/0002_settings_schema.sql
-```
+**Database Auto-Initialization**:
+You **no longer need to manually run migrations**. The system will automatically create the required database tables the first time it receives a request (e.g. when you visit the dashboard).
+
 
 ---
 
@@ -79,12 +76,8 @@ BeaUptime 是一个开源的在线状态监控系统，专为完全在 Cloudflar
    - `AUTH_ROOT_SECRET`: 您用于登录后台的管理密码（必填）。
    - *提示：诸如 SMTP 和 Apprise 通知等其他设置，现在可以直接在部署后的管理后台 UI 中动态配置。*
 
-**初始化数据库 (数据迁移)：**
-首次部署后，必须在数据库中创建表结构。您可以在本地通过终端运行以下命令进行远程迁移：
-```bash
-npx wrangler d1 execute DB --remote --file ./worker-api/migrations/0001_uptime_schema.sql
-npx wrangler d1 execute DB --remote --file ./worker-api/migrations/0002_settings_schema.sql
-```
+**数据库自动初始化：**
+您**不再需要手动执行数据库迁移命令**。系统在首次接收到请求时（如首次访问仪表盘），会自动在您的 D1 数据库中创建所需的所有表结构。
 
 ### 本地运行 / 调试
 由于本项目底层基于 Bun 和 Cloudflare 的架构，推荐使用 `bun` 或 `npm`。

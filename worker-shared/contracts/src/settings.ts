@@ -7,6 +7,8 @@ export const NotificationSettingsSchema = z.object({
   smtpPass: z.string().optional(),
   smtpFrom: z.string().optional(),
   appriseUrl: z.string().optional(),
+  alertTemplateDown: z.string().optional(),
+  alertTemplateUp: z.string().optional(),
 })
 
 export type NotificationSettings = z.infer<typeof NotificationSettingsSchema>
