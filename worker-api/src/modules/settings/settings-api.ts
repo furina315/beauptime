@@ -1,21 +1,20 @@
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
 import { NotificationSettingsSchema } from '@bea-uptime/contracts'
 import type { AppBindings } from '@/env'
-import { requireAuth } from '@/modules/auth/auth-middleware'
+import { authRequired } from '@/middlewares/auth-required'
 import { getSettings, updateSettings } from './settings-repository'
-import { successResponse } from '@/lib/response'
+import { jsonSuccess } from '@/lib/response'
 
 export const settingsApi = new Hono<{ Bindings: AppBindings }>()
 
-settingsApi.get('/', requireAuth(), async (c) => {
+settingsApi.get('/', authRequired(), async (c) => {
   const settings = await getSettings(c.env.DB)
-  return c.json(successResponse(settings))
+  return jsonSuccess(c, settings)
 })
 
-settingsApi.put('/', requireAuth(), zValidator('json', NotificationSettingsSchema), async (c) => {
-  const input = c.req.valid('json')
+settingsApi.put('/', authRequired(), async (c) => {
+  const input = NotificationSettingsSchema.parse(await c.req.json())
   await updateSettings(c.env.DB, input)
   const settings = await getSettings(c.env.DB)
-  return c.json(successResponse(settings))
+  return jsonSuccess(c, settings)
 })
