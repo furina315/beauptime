@@ -25,7 +25,7 @@ const fetchSettings = async () => {
   try {
     const res = await fetch('/api/v1/settings')
     const json = await res.json()
-    if (json.ok) {
+    if (json.success) {
       form.value = {
         appriseUrl: json.data.appriseUrl || '',
         smtpHost: json.data.smtpHost || '',
@@ -55,7 +55,7 @@ const saveSettings = async () => {
       body: JSON.stringify(form.value)
     })
     const json = await res.json()
-    if (json.ok) {
+    if (json.success) {
       statusMessage.value = 'Settings saved successfully'
       form.value = {
         appriseUrl: json.data.appriseUrl || '',
