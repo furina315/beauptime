@@ -21,7 +21,7 @@ import { security } from '@/middlewares/security'
 
 const AUTH_PREFIX = '/auth'
 const API_V1_PREFIX = '/api/v1'
-const MONITOR_SWEEP_CRON = '*/1 * * * *'
+const MONITOR_SWEEP_CRON = '* * * * *'
 const CLEANUP_CRON = '17 3 * * *'
 const PROTECTED_SPA_SHELL_PATH = '/index-spa.html'
 

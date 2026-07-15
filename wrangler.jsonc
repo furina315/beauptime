@@ -31,9 +31,7 @@
 	},
 	"triggers": {
 		"crons": [
-			// Monitor enabled services every minute.
 			"* * * * *",
-			// Run retention cleanup once a day outside the minute-by-minute sweep.
 			"17 3 * * *"
 		]
 	},
