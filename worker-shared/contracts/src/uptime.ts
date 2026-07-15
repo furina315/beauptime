@@ -146,4 +146,9 @@ export type PublicStatusResponse = {
   services: PublicStatusServiceSnapshot[]
   openIncidents: PublicStatusIncident[]
   recentIncidents: PublicStatusIncident[]
+  siteTitle?: string
+  siteLogo?: string
+  metaTitle?: string
+  metaIcon?: string
+  footerText?: string
 }

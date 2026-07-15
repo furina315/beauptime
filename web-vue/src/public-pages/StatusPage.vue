@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PublicStatusIncident, PublicStatusLevel, PublicStatusResponse, PublicStatusServiceSnapshot } from '@bea-uptime/contracts'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, inject } from 'vue'
 import { i18n } from '@/i18n'
 import { requestJson } from '@/lib/http'
 
@@ -24,6 +24,24 @@ const recentIncidents = computed(() => status.value?.recentIncidents ?? [])
 
 const currentLocale = () => String(i18n.global.locale.value)
 
+const updateSiteSettings = inject<(settings: any) => void>('updateSiteSettings')
+
+const updateFavicon = (iconUrlOrEmoji: string) => {
+  let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'icon'
+    document.getElementsByTagName('head')[0].appendChild(link)
+  }
+  
+  const trimmed = iconUrlOrEmoji.trim()
+  if (trimmed.startsWith('http') || trimmed.startsWith('/') || trimmed.startsWith('data:')) {
+    link.href = trimmed
+  } else if (trimmed.length > 0) {
+    link.href = `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>${trimmed}</text></svg>`
+  }
+}
+
 const loadStatus = async () => {
   if (!status.value) {
     loading.value = true
@@ -34,6 +52,24 @@ const loadStatus = async () => {
 
   try {
     status.value = await requestJson<PublicStatusResponse>('/api/v1/status', loadFailedMessage)
+    
+    if (updateSiteSettings && status.value) {
+      updateSiteSettings({
+        siteTitle: status.value.siteTitle,
+        siteLogo: status.value.siteLogo,
+        footerText: status.value.footerText,
+      })
+    }
+
+    if (status.value?.metaTitle) {
+      document.title = status.value.metaTitle
+    } else {
+      document.title = t('statusPage.documentTitle')
+    }
+
+    if (status.value?.metaIcon) {
+      updateFavicon(status.value.metaIcon)
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : loadFailedMessage
   } finally {
@@ -117,7 +153,6 @@ const serviceTimelineUptime = (service: PublicStatusServiceSnapshot) => {
 }
 
 onMounted(() => {
-  document.title = t('statusPage.documentTitle')
   void loadStatus()
   refreshTimer = setInterval(() => void loadStatus(), REFRESH_INTERVAL_MS)
   document.addEventListener('visibilitychange', handleVisibilityChange)

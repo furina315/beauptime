@@ -20,6 +20,11 @@ export const getSettings = async (db: D1Database): Promise<NotificationSettings>
     telegramChatId: settings.telegramChatId || '',
     alertTemplateDown: settings.alertTemplateDown || '',
     alertTemplateUp: settings.alertTemplateUp || '',
+    siteTitle: settings.siteTitle || '',
+    siteLogo: settings.siteLogo || '',
+    metaTitle: settings.metaTitle || '',
+    metaIcon: settings.metaIcon || '',
+    footerText: settings.footerText || '',
   }
 }
 
@@ -35,7 +40,12 @@ export const updateSettings = async (db: D1Database, input: NotificationSettings
     ['telegramBotToken', input.telegramBotToken || ''],
     ['telegramChatId', input.telegramChatId || ''],
     ['alertTemplateDown', input.alertTemplateDown || ''],
-    ['alertTemplateUp', input.alertTemplateUp || '']
+    ['alertTemplateUp', input.alertTemplateUp || ''],
+    ['siteTitle', input.siteTitle || ''],
+    ['siteLogo', input.siteLogo || ''],
+    ['metaTitle', input.metaTitle || ''],
+    ['metaIcon', input.metaIcon || ''],
+    ['footerText', input.footerText || '']
   ]
   
   const stmts = entries.map(([k, v]) => stmt.bind(k, v))

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, provide } from 'vue'
 import { useRoute } from 'vue-router'
 import AppMark from '@/components/brand/AppMark.vue'
 
@@ -9,6 +9,22 @@ const route = useRoute()
 const theme = ref<Theme>('light')
 const shouldCenterContent = computed(() => route.meta.centerContent !== false)
 const showStatusBrand = computed(() => route.name === 'status')
+
+const siteTitle = ref('')
+const siteLogo = ref('')
+const footerText = ref('')
+
+provide('updateSiteSettings', (settings: any) => {
+  siteTitle.value = settings.siteTitle || ''
+  siteLogo.value = settings.siteLogo || ''
+  footerText.value = settings.footerText || ''
+})
+
+const isEmoji = (str: string) => {
+  if (!str) return false
+  const trimmed = str.trim()
+  return !trimmed.includes('/') && !trimmed.includes('.') && trimmed.length <= 4
+}
 
 const applyTheme = (value: Theme) => {
   theme.value = value
@@ -33,8 +49,10 @@ onMounted(() => {
     <header class="public-header">
       <div class="public-header__inner" :class="{ 'public-header__inner--status': showStatusBrand }">
         <RouterLink v-if="showStatusBrand" class="public-brand" to="/">
-          <AppMark class="public-brand-logo" />
-          <span>{{ $t('app.name') }}</span>
+          <span v-if="isEmoji(siteLogo)" class="public-brand-emoji">{{ siteLogo.trim() }}</span>
+          <img v-else-if="siteLogo" :src="siteLogo.trim()" class="public-brand-logo-img" alt="Logo" />
+          <AppMark v-else class="public-brand-logo" />
+          <span>{{ siteTitle || $t('app.name') }}</span>
         </RouterLink>
 
         <button class="theme-toggle" type="button" :title="$t('dashboard.console.toggleTheme')" @click="toggleTheme">
@@ -47,6 +65,13 @@ onMounted(() => {
     <main class="public-main" :class="{ 'public-main--centered': shouldCenterContent }">
       <RouterView />
     </main>
+
+    <footer class="public-footer">
+      <div v-if="footerText" v-html="footerText"></div>
+      <div v-else>
+        Powered by <a href="https://github.com/furina315/beauptime" target="_blank">BeaUptime</a>
+      </div>
+    </footer>
   </div>
 </template>
 
@@ -84,11 +109,26 @@ onMounted(() => {
   gap: 10px;
   font-size: 1.05rem;
   font-weight: 800;
+  text-decoration: none;
+  color: var(--text);
 }
 
 .public-brand-logo {
   width: 26px;
   height: 26px;
+  flex: 0 0 auto;
+}
+
+.public-brand-logo-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.public-brand-emoji {
+  font-size: 24px;
+  line-height: 1;
   flex: 0 0 auto;
 }
 
@@ -116,13 +156,32 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-   justify-content: flex-start;
+  justify-content: flex-start;
   width: 100%;
   padding: 24px;
 }
 
 .public-main--centered {
   justify-content: center;
+}
+
+.public-footer {
+  text-align: center;
+  padding: 24px;
+  font-size: 14px;
+  color: var(--text-soft);
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+  width: 100%;
+}
+
+.public-footer a {
+  color: var(--brand);
+  text-decoration: none;
+}
+
+.public-footer a:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 760px) {

@@ -10,6 +10,11 @@ export const NotificationSettingsSchema = z.object({
   telegramChatId: z.string().optional(),
   alertTemplateDown: z.string().optional(),
   alertTemplateUp: z.string().optional(),
+  siteTitle: z.string().optional(),
+  siteLogo: z.string().optional(),
+  metaTitle: z.string().optional(),
+  metaIcon: z.string().optional(),
+  footerText: z.string().optional(),
 })
 
 export type NotificationSettings = z.infer<typeof NotificationSettingsSchema>

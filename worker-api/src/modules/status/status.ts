@@ -12,6 +12,7 @@ import {
   listPublicRecentIncidents,
 } from '@/modules/incident/incident-repository'
 import { buildPublicServiceStatuses, listPublicServiceStatuses } from './status-repository'
+import { getSettings } from '../settings/settings-repository'
 
 const RECENT_INCIDENT_DAYS = 14
 const PUBLIC_STATUS_TIMELINE_DAYS = 2
@@ -70,11 +71,18 @@ statusModule.get('/', async (c) => {
 
   const services = buildPublicServiceStatuses(serviceRows, incidentsByServiceId, new Date(generatedAt).getTime())
 
+  const settings = await getSettings(c.env.DB)
+
   const payload: PublicStatusResponse = {
     generatedAt,
     services,
     openIncidents,
     recentIncidents,
+    siteTitle: settings.siteTitle,
+    siteLogo: settings.siteLogo,
+    metaTitle: settings.metaTitle,
+    metaIcon: settings.metaIcon,
+    footerText: settings.footerText,
   }
 
   c.header('Cache-Control', 'private, no-store')

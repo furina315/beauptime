@@ -17,7 +17,12 @@ const form = ref({
   smtpPass: '',
   smtpFrom: '',
   alertTemplateDown: '',
-  alertTemplateUp: ''
+  alertTemplateUp: '',
+  siteTitle: '',
+  siteLogo: '',
+  metaTitle: '',
+  metaIcon: '',
+  footerText: ''
 })
 
 const currentTheme = ref('light')
@@ -44,7 +49,12 @@ const fetchSettings = async () => {
       smtpPass: data.smtpPass || '',
       smtpFrom: data.smtpFrom || '',
       alertTemplateDown: data.alertTemplateDown || '',
-      alertTemplateUp: data.alertTemplateUp || ''
+      alertTemplateUp: data.alertTemplateUp || '',
+      siteTitle: data.siteTitle || '',
+      siteLogo: data.siteLogo || '',
+      metaTitle: data.metaTitle || '',
+      metaIcon: data.metaIcon || '',
+      footerText: data.footerText || ''
     }
   } catch (err) {
     errorMessage.value = err instanceof Error ? err.message : 'Failed to load settings'
@@ -72,7 +82,12 @@ const saveSettings = async () => {
       smtpPass: data.smtpPass || '',
       smtpFrom: data.smtpFrom || '',
       alertTemplateDown: data.alertTemplateDown || '',
-      alertTemplateUp: data.alertTemplateUp || ''
+      alertTemplateUp: data.alertTemplateUp || '',
+      siteTitle: data.siteTitle || '',
+      siteLogo: data.siteLogo || '',
+      metaTitle: data.metaTitle || '',
+      metaIcon: data.metaIcon || '',
+      footerText: data.footerText || ''
     }
   } catch (err) {
     errorMessage.value = err instanceof Error ? err.message : 'Network error'
@@ -178,6 +193,35 @@ onMounted(() => {
             <option value="dark">Night Mode (Dark)</option>
           </select>
           <p class="form-help">Sets the visual theme for your browser across the dashboard and status page.</p>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2>Custom Branding</h2>
+        <div class="form-group">
+          <label>Site Title</label>
+          <input type="text" v-model="form.siteTitle" placeholder="BeaUptime" class="base-input" />
+          <p class="form-help">The main name displayed in the header of the public status page.</p>
+        </div>
+        <div class="form-group">
+          <label>Site Logo</label>
+          <input type="text" v-model="form.siteLogo" placeholder="🌸 or https://example.com/logo.png" class="base-input full-width" />
+          <p class="form-help">Supports a URL link to an image or a single Emoji.</p>
+        </div>
+        <div class="form-group">
+          <label>Browser Page Title (SEO)</label>
+          <input type="text" v-model="form.metaTitle" placeholder="BeaUptime | Uptime Status" class="base-input full-width" />
+          <p class="form-help">The title tag used for search engines and browser tabs.</p>
+        </div>
+        <div class="form-group">
+          <label>Browser Favicon</label>
+          <input type="text" v-model="form.metaIcon" placeholder="🚀 or https://example.com/favicon.png" class="base-input full-width" />
+          <p class="form-help">Supports a URL link to a favicon file or a single Emoji.</p>
+        </div>
+        <div class="form-group">
+          <label>Custom Footer (HTML)</label>
+          <textarea v-model="form.footerText" placeholder="&lt;p&gt;Copyright &amp;copy; 2026 My Brand&lt;/p&gt;" class="base-input html-editor"></textarea>
+          <p class="form-help">Custom HTML content for the footer. Leave blank to show default branding.</p>
         </div>
       </div>
 
