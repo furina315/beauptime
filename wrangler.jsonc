@@ -8,7 +8,7 @@
 		{
 			"binding": "DB",
 			// Replace with the D1 database id from your own Cloudflare account before remote deploys.
-			"database_id": "e367787a-37b9-401e-a1a9-daf83cfcead7",
+			"database_id": "bf6ada5c-6d7c-43f5-a9cf-e7d02128e315",
 			"migrations_dir": "./worker-api/migrations"
 		}
 	],	
